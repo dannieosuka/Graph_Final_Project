@@ -1,0 +1,183 @@
+---
+title: "Gapminder CO₂ & Undernourishment Dashboard"
+format: dashboard
+theme: superhero
+---
+
+```{python}
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go  # Importing graph_objects for go.Figure
+
+# Load Gapminder data (replace with actual dataset)
+co_data = pd.read_csv("C:\\Users\\dosuka\\Documents\\GitHub\\graph_course_da_git\\data\\co2_pcap_cons.csv")
+child_birth = pd.read_csv("C:\\Users\\dosuka\\Documents\\GitHub\\graph_course_da_git\\data\\child_mortality_0_5_year_olds_dying_per_1000_born.csv")
+
+```
+```{python}
+# reshape the data
+# Convert from wide format to long format
+co2_long = co_data.melt(id_vars=["country"], var_name="year", value_name="co2_emissions")
+birth_rate_long = child_birth.melt(id_vars=["country"], var_name="year", value_name="birth_rate")
+
+# Convert year column to integer
+co2_long["year"] = co2_long["year"].astype(int)
+birth_rate_long["year"] = birth_rate_long["year"].astype(int)
+
+## subset for years 2015-2022
+co2_long = co2_long[co2_long["year"].between(2015, 2022)]
+birth_rate_long = birth_rate_long[birth_rate_long["year"].between(2015, 2022)]
+
+## Merge the two datasets
+merged_data = pd.merge(co2_long, birth_rate_long, on=["country", "year"], how="inner")
+
+merged_data['co2_emissions'] = pd.to_numeric(merged_data['co2_emissions'], errors='coerce')
+
+# subset data for 2022
+merge_22 = merged_data.query("year == 2022")
+
+## if need be
+# List of countries to include in the plot
+#countries = ['Belgium', 'Burundi', 'China', 'Germany', 'Russia', 'Kenya', 'USA']
+
+# Subset the data for the selected countries
+#subset_data = merged_data[merged_data['country'].isin(countries)]
+
+```
+```{python}
+# Compute highest birth rate
+highest_row = merge_22.sort_values("birth_rate", ascending=False).head(1).squeeze()
+highest_birthrate_country = highest_row["country"]
+highest_birthrate_value = round(highest_row["birth_rate"], 1)
+
+# Compute lowest life expectancy
+lowest_row = merge_22.sort_values("birth_rate", ascending=True).head(1).squeeze()
+lowest_birthrate_country = lowest_row["country"]
+lowest_birthrate_value = round(lowest_row["birth_rate"], 1)
+
+# Compute highest CO2 emissions
+highest_co = merge_22.sort_values("co2_emissions", ascending=False).head(1).squeeze()
+highest_CO2emissions_country = highest_co["country"]
+highest_CO2emissions_value = round(highest_co["co2_emissions"], 1)
+
+# Compute lowest CO2 emissions
+lowest_co = merge_22.sort_values("co2_emissions", ascending=True).head(1).squeeze()
+lowest_CO2emissions_country = lowest_co["country"]
+lowest_CO2emissions_value = round(lowest_co["co2_emissions"], 1)
+
+# Create the map using plotly express with a blue color scale
+map_fig = px.choropleth(
+    merge_22,
+    locations="country",
+    color="birth_rate",
+    hover_name="country",
+    title="Map of Countries by Birth Rate",
+    color_continuous_scale="Blues",
+).update_layout(coloraxis_showscale=False)
+# 20 countries with highest CO2 emissions by Birth Rate (bar chart) with a blue color scale
+top_20 = merge_22.nlargest(20, "co2_emissions").sort_values("birth_rate", ascending=True)
+bar_fig = px.bar(
+    top_20,
+    x="birth_rate",
+    y="country",
+    title="Countries with the highest birthrates",
+    color="birth_rate",
+    color_continuous_scale="Blues",
+).update_layout(coloraxis_showscale=False)
+
+```
+
+# Home
+## Row 1 {height=30%}
+
+::: {.valuebox icon="heart" color="#1E90FF" title="Highest Birth Rate"}
+
+`{python} str(highest_birthrate_value)`
+
+`{python} highest_birthrate_country`
+
+:::
+
+::: {.valuebox icon="thermometer" color="#87CEFA" title="Lowest Birth Rate"} 
+
+`{python} str(lowest_birthrate_value)`
+
+`{python} lowest_birthrate_country`
+
+:::
+
+::: {.valuebox icon="thermometer" color="#87CEFA" title="Highest CO2 emissions"} 
+
+`{python} str(highest_CO2emissions_value)`
+
+`{python} highest_CO2emissions_country`
+
+:::
+
+::: {.valuebox icon="thermometer" color="#87CEFA" title="Highest CO2 emissions"} 
+
+`{python} str(lowest_CO2emissions_value)`
+
+`{python} lowest_CO2emissions_country`
+
+:::
+
+## Row 2 {height=60%}
+
+### {width=70%}
+
+```{python}
+map_fig
+```
+
+### {width=40%}
+
+```{python}
+bar_fig
+```
+
+# CO₂ Emissions
+
+
+## Layouts
+
+## Row {height="30%"}
+
+### Column {width="34%"}
+
+```{python}
+# First indicator analysis
+fig1 = px.line(merge_22, y='country', color = 'co2_emissions', title="CO₂ Emissions Over Time")
+fig1.show()
+
+```
+
+# Birth Rates
+
+### Column {width="33%"}
+```{python}
+# Violin Plot for Birth Rate Distribution
+fig2 = px.violin(merge_22, x='year', y='birth_rate', color='country', 
+                 title="Violin Plot of Birth Rate Distribution Over Time by Country")
+fig2.show()
+
+
+```
+
+# Linkage between CO2 Emissions and Birth Rates
+
+### Column {width="33%"}
+```{python}
+# Relationship Between CO2 Emissions and Birth Rate
+# Subset the data for the year 2022
+#data_2022 = subset_data[subset_data['year'] == 2022]
+
+# Scatter plot showing the relationship between CO₂ emissions and birth rate for 2022
+fig8 = px.scatter(merge_22, x='co2_emissions', y='birth_rate', color='country', 
+                  title="CO₂ Emissions and Birth Rate in 2022", 
+                  labels={'co2_emissions': 'CO₂ Emissions', 'birth_rate': 'Birth Rate'})
+
+# Show the plot
+fig8.show()
+
+```
